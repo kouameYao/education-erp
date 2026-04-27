@@ -1,0 +1,37 @@
+{
+  "name": "@erp/testing",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "scripts": {
+    "clean": "rm -rf .turbo node_modules",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "typecheck": "tsc --noEmit"
+  },
+  "exports": {
+    "./vitest-config/node": "./src/vitest-config/node.ts",
+    "./vitest-config/dom": "./src/vitest-config/dom.ts",
+    "./msw/server": "./src/msw/server.ts",
+    "./msw/handlers": "./src/msw/handlers.ts",
+    "./factories": "./src/factories/index.ts"
+  },
+  "peerDependencies": {
+    "vitest": "^4.1.0"
+  },
+  "dependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@vitejs/plugin-react": "^6.0.1",
+    "jsdom": "^29.0.2",
+    "msw": "^2.13.6"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.5"
+  }
+}

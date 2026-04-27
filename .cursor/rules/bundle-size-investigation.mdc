@@ -1,0 +1,34 @@
+---
+description: >-
+  How to investigate and shrink JS bundles — analyzer, tree-shaking, duplicate libs,
+  transitive deps (Developer Way guide + Next.js)
+alwaysApply: true
+---
+
+# Bundle size investigation
+
+Practical workflow (treemap / flamegraph, tree-shaking pitfalls, duplicate packages, transitive deps): **[Bundle Size Investigation — Developer Way](https://www.developerway.com/posts/bundle-size-investigation)**.
+
+Use this when **adding or upgrading dependencies**, **importing large UI/icon/chart libs**, or **reviewing client bundle regressions**. Align with **`.cursor/rules/barrel-files.mdc`** and Vercel **`bundle-*`** rules in **`.cursor/skills/vercel-react-best-practices/SKILL.md`**.
+
+## Next.js in this repo
+
+- Prefer **[@next/bundle-analyzer](https://www.npmjs.com/package/@next/bundle-analyzer)** (or the current Next.js docs recommendation) for **webpack/Turbopack** bundle visualization — same investigative mindset as the article’s Vite/Rollup visualizer.
+- Compare **production** builds; dev bundles are not authoritative for size.
+
+## Investigation checklist (from the guide)
+
+1. **Visualize** — Identify the largest chunks (vendor vs app). Drill into `node_modules` by package name.
+2. **Trace usage** — Grep/IDE references for the heavy package; distinguish **direct** vs **transitive** imports (`npm why <pkg>` / `pnpm why <pkg>` when unclear).
+3. **Confirm** — Temporarily remove or narrow the import and rebuild to verify the chunk shrinks (avoid shipping the experiment).
+4. **Tree-shaking**
+   - Avoid **`import * as X from 'huge-lib'`** then **`export const Ui = { …X }`** or spreading namespaces — bundlers often **fail to shake** unused exports ([article section](https://www.developerway.com/posts/bundle-size-investigation)).
+   - Prefer **named imports** of only what you use, or **per-path imports** when the library documents them (e.g. `lodash/trim` vs default `lodash`).
+   - **Non-ESM / legacy CJS** packages may not tree-shake; prefer ESM-first deps or documented subpath imports.
+5. **Duplicates** — Watch for **multiple libraries solving the same job** (e.g. several date libs); consolidate when refactor cost is acceptable.
+6. **Transitive weight** — A dependency may pull **styling engines** or other foundations you don’t need; fixing may mean replacing the top-level UI dependency, not just your direct import.
+
+## Agent / review expectations
+
+- Before adding a **large** client dependency, consider **bundle impact** and **dynamic import** (`next/dynamic`) for heavy islands (see Vercel **`bundle-dynamic-imports`**).
+- In **code review**, flag **Critical**/**Major** when a change introduces **namespace barrel re-exports of giant libs**, **default imports of non-shakeable utils**, or **overlapping** heavy libraries without justification.

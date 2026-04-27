@@ -1,0 +1,29 @@
+pre-commit:
+  parallel: true
+  jobs:
+    - name: biome
+      glob: "*.{js,jsx,ts,tsx,json,jsonc,css}"
+      run: bunx biome check --write --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
+      stage_fixed: true
+    - name: lint
+      run: bun run lint
+
+commit-msg:
+  jobs:
+    - name: conventional-commit
+      run: |
+        head -n1 {1} | grep -qE '^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .{1,}$' || {
+          echo "❌ Format de commit invalide.";
+          echo "   Attendu: <type>(scope?): <description>";
+          echo "   Types : build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test";
+          echo "   Exemple: feat(landing-page): add hero section";
+          exit 1;
+        }
+
+pre-push:
+  parallel: true
+  jobs:
+    - name: test
+      run: bun run test
+    - name: build
+      run: bun run build

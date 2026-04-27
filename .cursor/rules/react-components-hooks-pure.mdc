@@ -1,0 +1,103 @@
+---
+description: >-
+  React rules: purity; when to use effects (you might not need an effect); JSX-only components;
+  hooks not passed as values; static custom hooks (react.dev links in file)
+alwaysApply: true
+---
+
+# React component and hook rules
+
+This file consolidates official React guidance (purity, effects, JSX/hook call patterns). Use it when writing or reviewing UI and hooks.
+
+---
+
+## 1. Components and hooks must be pure
+
+Canonical: [Components and Hooks must be pure](https://react.dev/reference/rules/components-and-hooks-must-be-pure) · [Keeping Components Pure](https://react.dev/learn/keeping-components-pure)
+
+### What “pure” means
+
+- **Idempotent:** Same inputs (props, state, context; hook arguments) → same result. Avoid non-idempotent work **during render** (`new Date()`, `Math.random()`, `fetch`, globals, `document.title`, etc.) — use **event handlers**, **effects**, or **`useState(() => …)`** lazy init as in the docs.
+- **No side effects in render:** Observable work belongs in **handlers** or **effects** (`useEffect` / `useLayoutEffect` for external systems), not during the render phase.
+- **Do not mutate non-local values during render:** No mutating module scope, props, state snapshots, hook args/returns, or objects already referenced in JSX.
+
+### Allowed
+
+- **Local mutation** of values **created in that render** (e.g. `const items = []; … push`) is fine.
+- **Lazy initialization** without cross-component leaks, per docs.
+
+### Immutability
+
+- **Props / state:** never in-place mutation; copy or use setters.
+- **Hook arguments and returns:** immutable after use; copy before changes.
+- **After JSX:** don’t mutate objects already passed into JSX in the same render.
+
+### Repo note
+
+- Prefer **derive during render** over effect-sync for non-external state (Vercel **`rerender-derived-state-no-effect`**; details in [§3](#3-you-might-not-need-an-effect)).
+- Flag render-time I/O, globals, DOM writes, prop/state mutation as **high** unless moved to handlers/effects.
+
+---
+
+## 2. React calls components and hooks
+
+Canonical: [React calls Components and Hooks](https://react.dev/reference/rules/react-calls-components-and-hooks) · [Rules of Hooks](https://react.dev/reference/rules/rules-of-hooks)
+
+React must **orchestrate** when component functions and hooks run. Breaking that breaks reconciliation, hooks state, and optimizations.
+
+### Components: JSX only
+
+- **Use components as `<Component />` or `<Component>...</Component>`** — not `Component()` as a plain function call inside JSX or elsewhere in render output.
+- Direct calls bypass React’s scheduling, break identity in the tree, and **risk violating the Rules of Hooks** if that component uses hooks (e.g. conditional or looped calls).
+
+### Hooks: never as values
+
+Hooks are not regular functions you pass around. They must be **called** at the top level of a React **component** or **custom hook** only. See [Rules of Hooks](https://react.dev/reference/rules/rules-of-hooks).
+
+#### Don’t dynamically mutate a hook
+
+- Hooks should stay **static** (fixed at write time). Do **not** build **higher-order hooks** that wrap or return another hook for dynamic choice, e.g. `const useDataWithLogging = withLogging(useData); … useDataWithLogging()`.
+- Prefer one **named custom hook** per behavior, e.g. `useDataWithLogging()`, with the extra logic **inlined** inside that hook.
+
+#### Don’t dynamically use hooks
+
+Canonical: [Don’t dynamically use Hooks](https://react.dev/reference/rules/react-calls-components-and-hooks#dont-dynamically-use-hooks)
+
+- Do **not** pass a Hook as a **prop**, **context value**, or other injected “callback” so a child can call it later (e.g. `<Button useData={useSomething} />`). That is **hook dependency injection** and breaks **local reasoning**, makes optimization harder, and risks **conditional hook calls**.
+- The component that needs the result must **call the hook itself** at its top level; share **data** or **callbacks** via props/context, not the hook function.
+- If behavior must vary, encode the variation **inside** the custom hook (parameters, branching inside the hook) — not by swapping which hook is passed in from outside.
+
+**Testing (per React docs):** Prefer **mocking the server** (canned responses) or **E2E** over mocking components in ways that push you toward dynamic hooks.
+
+### Repo note
+
+- Flag **`SomeComponent()`** in JSX, **hooks passed as props/context**, **HOF-wrapped hooks**, and **dynamic “which hook to run”** patterns as **high severity** unless refactored to static hooks + data/callback props as above.
+
+---
+
+## 3. You Might Not Need an Effect
+
+Canonical: [You Might Not Need an Effect](https://react.dev/learn/you-might-not-need-an-effect) · [Synchronizing with Effects](https://react.dev/learn/synchronizing-with-effects) (when an effect *is* appropriate)
+
+Effects are for **synchronizing with an external system** (network, DOM widget, non-React store). If there is **no external system**, you usually **should not** use `useEffect` to mirror props/state into more state—that causes **extra renders**, **cascading updates**, and bugs.
+
+### Prefer these instead of “sync” effects
+
+| Situation | Prefer |
+|-----------|--------|
+| Value derivable from props/state | **Compute during render** (no new state; avoid redundant state) |
+| Expensive **pure** derivation | **`useMemo`** — not `useEffect` + `setState` |
+| Reset **whole** subtree when an id/key changes | **`key={...}`** on the inner component to reset state |
+| User caused it (click, submit, typing action) | **Event handler** — not an effect “watching” state |
+| Parent must stay in sync with child | **Lift state up** or **same event** updates both — not child `useEffect` calling parent `setState` |
+| External store (browser API, non-React subscription) | **`useSyncExternalStore`** when applicable — not manual `useEffect` subscribe + `setState` |
+
+### Data fetching in this repo
+
+Prefer **TanStack Query** (`services/` hooks, server prefetch) and **RSC/async server components** over ad-hoc `useEffect`+`fetch`. If you use an effect for fetch, you need **cleanup** (race / stale response) per the docs—Query handles this pattern for client cache.
+
+### Review flags
+
+- **`useEffect` that only** `setState`s from props/other state → **Major**: derive or reshape state ([recap](https://react.dev/learn/you-might-not-need-an-effect)).
+- **Chains of effects** each updating state to trigger the next → **Major**: compute in render and/or **one event handler** updates all needed state.
+- **POST / mutations** triggered by effect on state that really means “user submitted” → **Major**: move to **submit handler**.

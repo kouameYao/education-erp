@@ -1,0 +1,85 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# CodeRabbit AI code review config
+# Docs: https://docs.coderabbit.ai/getting-started/configure-coderabbit
+
+language: fr
+early_access: false
+tone_instructions: |
+  Réponds en français. Sois concret et concis. Référence les conventions
+  d'AGENTS.md (no barrel imports, NodeNext .js extension, transpilePackages,
+  forme package interne, conventional commits) quand pertinent.
+
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: true
+
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+
+  path_instructions:
+    - path: "packages/**/package.json"
+      instructions: |
+        Vérifier la forme d'un package interne (cf. AGENTS.md §4) :
+        - "private": true, "type": "module", "sideEffects": false
+        - champ "exports" (jamais "main"/"types")
+        - aucune entrée d'exports ne doit pointer sur un fichier de type
+          barrel (ex: src/index.ts qui ré-exporte plusieurs modules).
+        - scripts lint/lint:fix/typecheck présents.
+    - path: "packages/**/src/index.ts"
+      instructions: |
+        ❌ Barrel file détecté. Le repo interdit les barrel imports
+        (cf. AGENTS.md §1). Exposer chaque module via une entrée dédiée
+        dans le champ "exports" du package.json plutôt que via index.ts.
+    - path: "apps/*/next.config.{ts,js,mjs}"
+      instructions: |
+        Vérifier que tous les @erp/* consommés par cette app sont listés
+        dans transpilePackages (cf. AGENTS.md §3). Sinon le build prod
+        échouera sur les imports .js non transpilés.
+    - path: "packages/**/src/**/*.ts"
+      instructions: |
+        Sauf pour @erp/ui (Bundler resolution), les imports relatifs
+        intra-package doivent utiliser l'extension .js
+        (NodeNext, cf. AGENTS.md §2). Ex: import { x } from "./foo.js".
+    - path: "**/*.{ts,tsx}"
+      instructions: |
+        Code TypeScript 6 strict. Préférer les types explicites aux any.
+        Pas de console.log en code commit (utiliser @erp/logger).
+
+  path_filters:
+    - "!**/.next/**"
+    - "!**/.turbo/**"
+    - "!**/node_modules/**"
+    - "!**/dist/**"
+    - "!**/build/**"
+    - "!**/*.lock"
+    - "!**/bun.lock"
+    - "!**/*.snap"
+
+  tools:
+    biome:
+      enabled: true
+    github-checks:
+      enabled: true
+      timeout_ms: 90000
+    languagetool:
+      enabled: false
+    markdownlint:
+      enabled: true
+    yamllint:
+      enabled: true
+    actionlint:
+      enabled: true
+    gitleaks:
+      enabled: true
+    shellcheck:
+      enabled: true
+
+chat:
+  auto_reply: true

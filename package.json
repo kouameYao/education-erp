@@ -1,0 +1,36 @@
+{
+  "name": "erp-scolaire",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "turbo build",
+    "clean": "git clean -xdf node_modules",
+    "clean:workspaces": "turbo clean",
+    "dev": "turbo dev",
+    "dev:landing-page": "turbo dev --filter=@erp/landing-page",
+    "dev:web": "turbo dev --filter=@erp/web",
+    "dev:portal": "turbo dev --filter=@erp/portal",
+    "dev:admin": "turbo dev --filter=@erp/admin",
+    "test": "turbo test",
+    "format": "biome format --write .",
+    "lint": "turbo lint",
+    "lint:fix": "turbo lint:fix",
+    "typecheck": "turbo typecheck"
+  },
+  "packageManager": "bun@1.3.11",
+  "trustedDependencies": [
+    "@biomejs/biome",
+    "lefthook"
+  ],
+  "devDependencies": {
+    "@biomejs/biome": "2.4.10",
+    "@types/bun": "^1.3.0",
+    "@types/node": "^25.6.0",
+    "lefthook": "2.1.6",
+    "turbo": "^2.9.8",
+    "typescript": "^6.0.2"
+  }
+}

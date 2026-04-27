@@ -1,0 +1,33 @@
+---
+description: >-
+  Infinite scroll with TanStack Query useInfiniteQuery and optional TanStack
+  Virtual. Default: simple list UIs without react-table. Apply when implementing
+  load-more lists, optional virtualization, or refactoring pagination hooks.
+  TanStack Table is only for data-grid cases. Paynah lists use PaginationMeta
+  from models/pagination-meta.ts.
+globs: "**/components/**/*list*.tsx,**/components/**/*scroll*.tsx,**/services/**/*.ts,**/hooks/**/use-*infinite*.ts,**/models/pagination-meta.ts,**/models/**/notification.ts"
+alwaysApply: false
+---
+
+# Infinite scroll and virtualized lists
+
+Canonical Query behavior: [TanStack Query v5 — Infinite Queries](https://tanstack.com/query/v5/docs/framework/react/guides/infinite-queries).
+
+**Paynah API shape:** list payloads use **`{ data, meta }`** with **`PaginationMeta`** — **`meta.total`**, **`meta.page`** (1-based), **`meta.limit`**, **`meta.totalPages`** (`models/pagination-meta.ts`). Extend **`paginationListParamsSchema`** for filters (e.g. notifications). For **`useInfiniteQuery`**: **`initialPageParam: 1`**, **`getNextPageParam`** from **`lastPage.meta.page < totalPages ? page + 1 : undefined`**; optional scroll guard **`flatData.length < data.pages[0].meta.total`**.
+
+**Do not assume `@tanstack/react-table`.** Most listings are **scroll + `flatMap`** (e.g. profile notifications). Use Table + virtual examples only for **grid/table** screens.
+
+For full implementation steps and optional Table/virtual chapters, read:
+
+**`.cursor/skills/infinite-scroll-lists/SKILL.md`**
+
+**Optional (table grids):** [tanstack/table `virtualized-infinite-scrolling`](https://github.com/tanstack/table/tree/main/examples/react/virtualized-infinite-scrolling). In-repo mirrors: **`reference-virtualized-infinite-scrolling-main.md`**, **`reference-virtualized-infinite-scrolling-makeData.md`**.
+
+Summary (Query guide + this repo):
+
+- **`useInfiniteQuery`**: **`data.pages`** + **`data.pageParams`**; **`initialPageParam`** required — use **`1`** for Paynah **`PaginationMeta`** APIs, not **`0`** (TanStack Table demo uses 0-based page index).
+- **`getNextPageParam`**: return **`undefined`** when done; Paynah: **`page < totalPages ? page + 1 : undefined`**.
+- **Loading UX**: **`isFetchingNextPage`** vs **`isFetching`**.
+- **`fetchNextPage`**: prefer **`hasNextPage && !isFetching`**; **`fetchNextPage({ cancelRefetch: false })`** only when intentional.
+- **`initialData` / `placeholderData`**: shape **`{ pages, pageParams }`**. Refetch is sequential from the first page; cache eviction resets pagination.
+- **Virtualization**: **`@tanstack/react-virtual`** when needed (list or table). Table example [package.json](https://github.com/TanStack/table/blob/main/examples/react/virtualized-infinite-scrolling/package.json) is for **grid** layouts; plain lists can virtualize a **`div`** without Table.

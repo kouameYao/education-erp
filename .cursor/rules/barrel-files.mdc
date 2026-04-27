@@ -1,0 +1,36 @@
+---
+description: Avoid barrel files (index re-exports) for faster TS, bundling, and tool graphs — direct imports preferred
+alwaysApply: true
+---
+
+# Barrel files (`index.ts` re-exports)
+
+## Why this matters
+
+Barrel files re-export many modules from a single entry. Tools often have to **load and analyze the whole barrel** (and transitive dependencies) even when you only import one symbol — which slows **TypeScript** (e.g. hover, checking), **bundlers**, and **graph-based tooling** (e.g. test selection in CI). **Nested barrels** (`a → b → c → d`) multiply the effect.
+
+Atlassian documented large-scale removal of barrels improving build time, TS responsiveness, and how many tests ran per change: [How We Achieved 75% Faster Builds by Removing Barrel Files](https://www.atlassian.com/blog/atlassian-engineering/faster-builds-when-removing-barrel-files).
+
+## Rules for this repo
+
+1. **Do not add new barrel-only `index.ts` / `index.tsx`** whose main job is re-exporting siblings in the same folder — especially under **`services/<domain>/`** and feature/component trees. Import the **concrete module**: `@/services/<domain>/<action>` (see **`.cursor/commands/create-service.md`**).
+
+2. **Prefer direct paths over deep barrel chains** when writing or touching imports:
+   - Services: always **`@/services/<domain>/<file>`** (no `services/<domain>/index.ts`).
+   - Models: **`@/models/<domain>`** (e.g. `@/models/qr-auth`) is preferred over **`@/models`** when you only need one domain — reduces how much of the aggregated `models/index.ts` graph is pulled in. The root **`@/models`** barrel remains for legacy compatibility; do not use it as an excuse to add more folder barrels elsewhere.
+
+3. **Never mix graphs in one barrel:** do not re-export both **client hooks** and **server-only prefetch** from the same `index.ts` — importers can drag the wrong dependency graph. See **`.cursor/rules/server-client-bundle-boundary.mdc`**.
+
+## Trade-offs (intentional)
+
+Direct imports can mean **more path updates** when moving files, and less “public API” hiding behind one entry. For **internal** app code, this repo prioritizes **clear dependency graphs and tool performance** over barrel convenience.
+
+## Summary
+
+- **No new** service (or similar) barrels.
+- **Prefer** direct **`@/models/<file>`** imports for new/edited code where it is straightforward.
+- **Keep** server/client split out of barrels; full boundary rules live in **`server-client-bundle-boundary.mdc`**.
+
+## Bundle size tie-in
+
+Namespace re-exports and barrels that pull **entire vendor packages** destroy **tree-shaking** and inflate the client bundle. When investigating, follow **`.cursor/rules/bundle-size-investigation.mdc`** and [Bundle Size Investigation (Developer Way)](https://www.developerway.com/posts/bundle-size-investigation).

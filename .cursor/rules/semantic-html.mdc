@@ -1,0 +1,81 @@
+---
+description: >-
+  Use semantic HTML for all user-facing markup (JSX/TSX, HTML). Improves
+  accessibility, SEO, valid DOM hierarchy (avoids hydration mismatches), and
+  predictable behavior for Cursor, Claude, and other agents.
+alwaysApply: true
+---
+
+# Semantic HTML
+
+**Whenever you generate or edit UI markup** (React/Next components, layouts, HTML fragments, MDX with structure), prefer **meaningful elements** over generic `div`/`span` wrappers.
+
+## Structure and landmarks
+
+- One **`main`** per page for primary content; use **`header`**, **`footer`**, **`nav`**, **`aside`**, **`section`**, **`article`** when they match the role of the block.
+- Use **`h1`–`h6`** in order for headings; do not skip levels for styling—adjust styles with CSS/Tailwind instead.
+
+## Interactive and form content
+
+- **`button`** for actions (submit, open, toggle); use **`type="button"`** when not submitting a form. Use **`a href`** for navigation. Avoid `div`/`span` with `onClick` unless there is no semantic alternative and accessibility is fully handled.
+- **`form`**, **`label`** (associated with controls via `htmlFor`/`id`), **`fieldset`**/**`legend`** for related groups when helpful.
+- Native inputs: **`input`**, **`textarea`**, **`select`**, **`option`** with correct **`type`** and accessible names.
+
+## Lists and text
+
+- **`ul`**/**`ol`**/**`li`** for lists; **`dl`**/**`dt`**/**`dd`** for description lists when appropriate.
+- **`p`** for paragraphs; **`strong`**/**`em`** for importance/emphasis, not only bold/italic styling. **`p`** must not wrap **block-level** children (e.g. `div`, another `p`, sectioning elements, cards that render `div`s)—use **`div`** with appropriate text styling if the child tree is unknown or includes blocks.
+
+## Media and data
+
+- **`img`** with meaningful **`alt`** (empty `alt=""` only when decorative); **`figure`**/**`figcaption`** when captioning.
+- **`table`**/**`thead`**/**`tbody`**/**`tr`**/**`th`**/**`td`** for tabular data, not for arbitrary layout.
+
+## Valid hierarchy (avoid hydration mismatches)
+
+Browsers **repair invalid HTML** by moving or closing tags. **React compares the server HTML to the client tree**; if the live DOM differs, you get hydration errors or subtle bugs.
+
+- **No interactive inside interactive**: do not nest **`button`** in **`button`**, **`a`** in **`a`**, or **`button`** inside **`a`** / **`a`** inside **`button`** (unless using a single delegated pattern documented by your UI kit).
+- **Phrasing vs block**: do not put **`div`**, **`section`**, **`ul`**, **`h1`–`h6`**, or other **flow/block** elements inside **`p`**, **`span`**, **`label`** (when the label wraps complex layout), or **`a`** when it would break link phrasing content rules.
+- **Lists**: **`li`** only under **`ul`**, **`ol`**, or **`menu`**; direct children of lists must be **`li`** (or script/template per spec).
+- **Tables**: **`tr`** in **`thead`**/**`tbody`**/**`tfoot`**; **`th`**/**`td`** only in **`tr`**—no skipping structural wrappers for layout hacks.
+- **Headings**: one logical outline; avoid duplicating **`h1`** in a way that splits landmarks incorrectly across server/client conditional branches.
+
+Prefer **`Fragment`** or a **`div`** wrapper over forcing a **`p`** when composing **child components** that may render blocks. Let the repo’s ESLint setup (e.g. **jsx-a11y** and any DOM-nesting rules) catch invalid trees in CI.
+
+## Accessibility tie-in
+
+- Prefer semantics that convey role to assistive tech; add **`aria-*`** only when semantics are insufficient (e.g. composite widgets, live regions).
+- Do not remove visible focus styles; visible focus and keyboard operability stay in line with semantic controls.
+
+## Quick anti-patterns
+
+```tsx
+// ❌ BAD — div soup, fake button
+<div className="cursor-pointer" onClick={onSubmit}>Send</div>
+
+// ✅ GOOD
+<button type="submit">Send</button>
+```
+
+```tsx
+// ❌ BAD — heading for styling only
+<h4 className="text-2xl font-bold">Page title</h4>
+
+// ✅ GOOD — correct level for outline
+<h1 className="text-2xl font-bold">Page title</h1>
+```
+
+```tsx
+// ❌ BAD — <p> cannot contain <div>; browser closes <p> early → SSR/client mismatch
+<p>
+  <Card /> {/* renders a div */}
+</p>
+
+// ✅ GOOD
+<div className="text-base text-muted-foreground">
+  <Card />
+</div>
+```
+
+When a **shadcn/ui** or design-system primitive renders a `div` for layout but exposes the right role (e.g. `Dialog`, `Tabs`), use that component’s documented patterns; still choose semantic structure **around** it (landmarks, headings, real buttons where the API allows).
